@@ -20,3 +20,6 @@ logs/
 # Editors
 .vscode/
 .DS_Store
+
+# Target
+target.json
