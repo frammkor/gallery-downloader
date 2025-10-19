@@ -1,0 +1,22 @@
+# Node
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+package-lock.json
+
+# Build output
+dist/
+
+# Env
+.env
+.env.local
+
+# Runtime
+downloads/
+logs/
+
+# Editors
+.vscode/
+.DS_Store
