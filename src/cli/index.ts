@@ -29,6 +29,9 @@ function parseArgs(argv: string[]): CliOptions {
       opts.maxPerGallery = Number(argv[++i] ?? "0") || undefined;
     } else if (a === "--help" || a === "-h") {
       printHelpAndExit();
+    } else if (a === "--strategy") {
+      const v = (argv[++i] || "").toLowerCase();
+      opts.strategy = v ?? 'generic';
     } else {
       // ignore unknowns for now
     }
@@ -116,7 +119,7 @@ async function main() {
     process.exit(1);
   }
 
-  log(`Starting run with ${urls.length} URL(s). Concurrency=${concurrency}, headless=${headless}`);
+  log(`Starting run with ${urls.length} URL(s). Strategy=${opts.strategy}, Concurrency=${concurrency}, headless=${headless}`);
 
   // Simple concurrency control (round-robin worker pool)
   const scraperFactory = () =>
@@ -125,6 +128,7 @@ async function main() {
       headless,
       skipExisting,
       maxPerGallery: opts.maxPerGallery,
+      strategy: opts.strategy
     });
 
   let active = 0;

@@ -20,3 +20,7 @@ This repo currently contains the folder/module structure only—no implementatio
 ## Next Steps
 - Initialize package.json, TypeScript, and Puppeteer.
 - Implement CLI + engine.
+
+## Run
+`npx tsc`
+`bin/download-galleries --input ./urls.json --strategy next --headless false`

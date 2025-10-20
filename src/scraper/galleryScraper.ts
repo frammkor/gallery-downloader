@@ -2,7 +2,7 @@
 import { mkdirSync, existsSync } from "node:fs";
 import { resolve } from "node:path";
 import { PuppeteerDriver } from "./drivers/puppeteerDriver";
-import { discoverImageUrls } from "./strategies/genericStrategy";
+import { genericStrategy, nextButtonStrategy  } from "./strategies";
 import { logStep } from "../utils/logger";
 import { downloadToFile } from "../utils/network";
 import { filenameFromUrl } from "../utils/filename";
@@ -21,6 +21,7 @@ export class GalleryScraper {
       headless: boolean;
       skipExisting: boolean;
       maxPerGallery?: number;
+      strategy?: string;
     }
   ) {}
 
@@ -41,44 +42,47 @@ export class GalleryScraper {
       logStep("creating folder", galleryName);
       mkdirSync(galleryPath, { recursive: true });
 
-      // Load as much content as possible
-      await driver.autoScroll(page);
-
-      // Discover candidate image URLs
-      const all = await discoverImageUrls(page);
-      console.log("🚀 ~ galleryScraper.ts:49 ~ GalleryScraper ~ scrape ~ all:", all)
-      const limited = this.opts.maxPerGallery ? all.slice(0, this.opts.maxPerGallery) : all;
-
-      let downloaded = 0;
+      let totalFound = 0;
+      let totalDownloaded = 0;
       const errors: string[] = [];
 
-      for (const imgUrl of limited) {
-        const fname = filenameFromUrl(imgUrl);
-        // If skipping existing, check first
-        if (this.opts.skipExisting && existsSync(resolve(galleryPath, fname))) {
-          continue;
-        }
+      if (this.opts.strategy === "next") {
+        // Your requested flow: click image -> HD -> download -> back -> #photobitrighta
+        const res = await nextButtonStrategy(page, galleryPath, {
+          maxPerGallery: this.opts.maxPerGallery,
+          skipExisting: this.opts.skipExisting,
+        });
+        totalFound = res.totalFound;
+        totalDownloaded = res.totalDownloaded;
+        errors.push(...res.errors);
+      } else {
+        // Generic fallback: scan page and download largest seen
+        await driver.autoScroll(page);
+        const all = await genericStrategy(page);
+        const limited = this.opts.maxPerGallery ? all.slice(0, this.opts.maxPerGallery) : all;
 
-        try {
-          logStep("downloading image", fname);
-        //   await downloadToFile(imgUrl, galleryPath, true);
-          downloaded++;
-        } catch (e: any) {
-          errors.push(`${fname} ← ${imgUrl} :: ${e?.message || e}`);
+        for (const imgUrl of limited) {
+          const fname = filenameFromUrl(imgUrl);
+          if (this.opts.skipExisting && existsSync(resolve(galleryPath, fname))) {
+            continue;
+          }
+          try {
+            logStep("downloading image", fname);
+            await downloadToFile(imgUrl, galleryPath, true);
+            totalDownloaded++;
+          } catch (e: any) {
+            errors.push(`${fname} ← ${imgUrl} :: ${e?.message || e}`);
+          }
         }
+        totalFound = limited.length;
       }
 
       logStep(
         `total images downloaded for gallery '${galleryName}'`,
-        downloaded
+        totalDownloaded
       );
 
-      return {
-        galleryName,
-        totalFound: limited.length,
-        totalDownloaded: downloaded,
-        errors,
-      };
+      return { galleryName, totalFound, totalDownloaded, errors };
     } finally {
       await driver.close();
     }

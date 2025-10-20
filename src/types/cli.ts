@@ -7,6 +7,7 @@ export type CliOptions = {
   downloadDir?: string;
   skipExisting?: boolean;
   maxPerGallery?: number;
+  strategy?: string;
 };
 
 export type UrlListFile =

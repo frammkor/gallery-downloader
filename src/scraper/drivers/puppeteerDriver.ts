@@ -10,7 +10,7 @@ export class PuppeteerDriver {
     const executablePath = this.findChromeExecutable();
 
     this.browser = await puppeteer.launch({
-        executablePath,
+      executablePath,
       headless,
       args: [
         "--no-sandbox",
@@ -98,7 +98,6 @@ export class PuppeteerDriver {
     };
 
     const paths = executablePaths[platform] || executablePaths.linux;
-    console.log("🚀 Chrome Executable Paths:", paths);
 
     // Try to find an existing Chrome installation
     const fs = require("fs");
@@ -106,7 +105,7 @@ export class PuppeteerDriver {
       try {
         if (fs.existsSync(path)) {
           console.log(`Found Chrome at: ${path}`);
-          console.log("🚀 Existing:", path);
+          console.log("Existing:", path);
           return path;
         }
       } catch (e) {

@@ -22,4 +22,4 @@ logs/
 .DS_Store
 
 # Target
-target.json
+urls.json

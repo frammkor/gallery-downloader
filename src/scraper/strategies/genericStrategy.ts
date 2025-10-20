@@ -16,7 +16,7 @@ function pickLargestFromSrcset(srcset: string): string | null {
   return parts[0].url;
 }
 
-export async function discoverImageUrls(page: Page): Promise<string[]> {
+export default async function discoverImageUrls(page: Page): Promise<string[]> {
   // Collect from <img> and from <a href="...ext"> pointing to images
   const urls = await page.evaluate(() => {
     const set = new Set<string>();
