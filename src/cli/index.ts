@@ -19,7 +19,7 @@ function parseArgs(argv: string[]): CliOptions {
       const v = argv[++i];
       opts.headless = v === "false" ? false : true;
     } else if (a === "--concurrency" || a === "-c") {
-      opts.concurrency = Number(argv[++i] ?? "4");
+      opts.concurrency = Number(argv[++i] ?? "2");
     } else if (a === "--downloadDir" || a === "-d") {
       opts.downloadDir = argv[++i];
     } else if (a === "--skipExisting") {
@@ -49,7 +49,7 @@ Options:
   --url, -u            Single gallery URL to process
   --input, -i          JSON file with list of URLs
   --headless           Run headless browser (default: true)
-  --concurrency, -c    Parallel galleries to process (default: 4)
+  --concurrency, -c    Parallel galleries to process (default: 2)
   --downloadDir, -d    Root download directory (default: downloads)
   --skipExisting       Skip already-downloaded files (default: true)
   --maxPerGallery      Limit number of images per gallery (default: unlimited)
@@ -98,7 +98,7 @@ async function main() {
   ensureValidInput(opts);
 
   const headless = opts.headless ?? true;
-  const concurrency = opts.concurrency ?? 4;
+  const concurrency = opts.concurrency ?? 2;
   const downloadDir = opts.downloadDir ?? "downloads";
   const skipExisting = opts.skipExisting ?? true;
 

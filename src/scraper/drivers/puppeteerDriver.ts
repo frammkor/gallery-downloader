@@ -104,8 +104,8 @@ export class PuppeteerDriver {
     for (const path of paths) {
       try {
         if (fs.existsSync(path)) {
-          console.log(`Found Chrome at: ${path}`);
-          console.log("Existing:", path);
+          // console.log(`Found Chrome at: ${path}`);
+          // console.log("Existing:", path);
           return path;
         }
       } catch (e) {

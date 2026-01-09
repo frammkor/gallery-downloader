@@ -70,30 +70,57 @@ async function waitForHdHrefChange(page: Page, prevHref: string | null, timeoutM
   await pageSleep(page, 200);
 }
 
+async function getGalleryTotal(page: Page): Promise<number> {
+  return await page.evaluate(() => {
+    const galleryString = document.querySelector('#gridphoto-gallery-link > span');
+    if (!galleryString) return 1;
+
+    const text = galleryString.textContent || '';
+    // Match the number after "of" (e.g., "Pic 1 of 128" -> captures "128")
+    const match = text.match(/of\s+(\d+)/);
+
+    return match ? parseInt(match[1], 10) : 1;
+  });
+}
 export default async function runNextButtonStrategy(
   page: Page,
   galleryPath: string,
   opts: { maxPerGallery?: number; skipExisting: boolean }
-): Promise<{ totalFound: number; totalDownloaded: number; errors: string[] }> {
+): Promise<{ totalFound: number; totalDownloaded: number; errors: string[], expectedTotal: number }> {
   let totalFound = 0;
   let totalDownloaded = 0;
   const errors: string[] = [];
-  const seen = new Set<string>(); // guard against accidental repeats
+  const seenUrl = new Set<string>();
+
+  const expectedTotal = await getGalleryTotal(page);
+  let consecutiveDuplicates = 0; // Add counter for stuck detection
+  let lastHref: string | null = null;
 
   while (true) {
-    // 1) Read current HD href directly from DOM
     const hdHref = await getHdHref(page);
     if (!hdHref) {
-      // no HD anchor on this page — stop
+      logStep("warning", "No HD href found, stopping");
       break;
     }
 
-    // 2) Download (skip duplicates)
-    if (!seen.has(hdHref)) {
-      seen.add(hdHref);
+    // Detect if we're stuck on the same image
+    if (hdHref === lastHref) {
+      consecutiveDuplicates++;
+      if (consecutiveDuplicates >= 3) {
+        logStep("warning", `Stuck on same image (${hdHref}), stopping`);
+        break;
+      }
+    } else {
+      consecutiveDuplicates = 0;
+      lastHref = hdHref;
+    }
+
+    // Download (skip duplicates)
+    if (!seenUrl.has(hdHref)) {
+      seenUrl.add(hdHref);
       totalFound++;
       const fname = filenameFromUrl(hdHref);
-      logStep("downloading image", fname);
+      logStep("downloading image", `${totalFound}/${expectedTotal} - ${fname}`);
       try {
         await downloadToFile(hdHref, galleryPath, true);
         totalDownloaded++;
@@ -102,16 +129,30 @@ export default async function runNextButtonStrategy(
       }
     }
 
+    // Check if we've reached the expected total
+    if (totalFound >= expectedTotal) {
+      logStep("success", `Reached expected total (${expectedTotal})`);
+      break;
+    }
+
     // Respect optional cap
     if (opts.maxPerGallery && totalDownloaded >= opts.maxPerGallery) break;
 
-    // 3) Click Next; stop if it doesn’t exist
+    // Click Next
     const hasNext = await clickNext(page);
-    if (!hasNext) break;
+    if (!hasNext) {
+      logStep("info", "No next button found, stopping");
+      break;
+    }
 
-    // 4) Wait until the HD href changes (new image) or time out
+    // Wait for href change
     await waitForHdHrefChange(page, hdHref, 10_000);
   }
 
-  return { totalFound, totalDownloaded, errors };
+  // Warn if we didn't get all images
+  if (totalFound < expectedTotal) {
+    logStep("warning", `Only found ${totalFound}/${expectedTotal} images`);
+  }
+
+  return { totalFound, totalDownloaded, errors, expectedTotal };
 }

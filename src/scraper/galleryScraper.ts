@@ -3,7 +3,7 @@ import { mkdirSync, existsSync } from "node:fs";
 import { resolve } from "node:path";
 import { PuppeteerDriver } from "./drivers/puppeteerDriver";
 import { genericStrategy, nextButtonStrategy  } from "./strategies";
-import { logStep } from "../utils/logger";
+import { logStep, log } from "../utils/logger";
 import { downloadToFile } from "../utils/network";
 import { filenameFromUrl } from "../utils/filename";
 
@@ -26,7 +26,7 @@ export class GalleryScraper {
   ) {}
 
   async scrape(url: string): Promise<ScrapeResult> {
-    logStep("processing url", url);
+    // logStep("processing url", url);
 
     const driver = new PuppeteerDriver();
     await driver.launch(this.opts.headless);
@@ -36,10 +36,10 @@ export class GalleryScraper {
       await page.goto(url, { waitUntil: "domcontentloaded" });
 
       const galleryName = await driver.getGalleryName(page, url);
-      logStep("gallery name", galleryName);
+      // logStep("gallery name", galleryName);
 
       const galleryPath = resolve(this.opts.downloadDir, galleryName);
-      logStep("creating folder", galleryName);
+      // logStep("creating folder", galleryName);
       mkdirSync(galleryPath, { recursive: true });
 
       let totalFound = 0;
@@ -55,6 +55,11 @@ export class GalleryScraper {
         totalFound = res.totalFound;
         totalDownloaded = res.totalDownloaded;
         errors.push(...res.errors);
+
+        if(res.expectedTotal !== res.totalDownloaded) {
+          console.error(`${galleryName} did not download all the fotos. Downloaded ${res.totalDownloaded} of ${res.expectedTotal}. URL: ${url}`)
+          errors.push(`${galleryName} did not download all the fotos. Downloaded ${res.totalDownloaded} of ${res.expectedTotal}. URL: ${url}`);
+        }
       } else {
         // Generic fallback: scan page and download largest seen
         await driver.autoScroll(page);
@@ -81,6 +86,7 @@ export class GalleryScraper {
         `total images downloaded for gallery '${galleryName}'`,
         totalDownloaded
       );
+      log(`src: ${url}`)
 
       return { galleryName, totalFound, totalDownloaded, errors };
     } finally {
